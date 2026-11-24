@@ -59,7 +59,7 @@ module.exports = function withAppIntents(config) {
     }
     console.log(`[withAppIntents] injected ${files.length} file(s) into main target`);
 
-    // App Intents 需要 iOS 16+，低于 16 就抬到 16
+    // App Intents 需要 iOS 16+，而 Expo 54 的模块最低是 16.4：低于 16.4 一律抬到 16.4，不动更高的值
     const listId = proj.pbxNativeTargetSection()[appTarget.uuid].buildConfigurationList;
     const list = proj.pbxXCConfigurationList()[listId];
     const configs = proj.pbxXCBuildConfigurationSection();
@@ -67,7 +67,7 @@ module.exports = function withAppIntents(config) {
       const bs = configs[c] && configs[c].buildSettings;
       if (!bs) continue;
       const cur = Number((bs.IPHONEOS_DEPLOYMENT_TARGET || '17.0').replace(/"/g, ''));
-      if (cur && cur < 16) bs.IPHONEOS_DEPLOYMENT_TARGET = '"16.0"';
+      if (cur && cur < 16.4) bs.IPHONEOS_DEPLOYMENT_TARGET = '"16.4"';
     }
     return cfg;
   });
