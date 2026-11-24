@@ -1,10 +1,14 @@
-// Solshot · polar sun-path diagram drawn with plain Views (no SVG dependency).
+// Solshot · polar sun-path diagram.
 //
 // Geometry: azimuth runs clockwise from North around the outer ring, altitude is the radius
 // (horizon = outer ring, zenith = centre). That is the "look up at the sky" convention used by
 // every sun-path chart, so a compass bearing read off the phone maps straight onto the diagram.
+//
+// The arcs themselves are drawn as SVG paths (react-native-svg) so they stay smooth at 3x on
+// device instead of the beaded look you get from a chain of rotated Views.
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { colors } from './theme';
 import { solarPosition, DAY } from './engine/solar';
 
@@ -16,25 +20,34 @@ function project(azDeg, altDeg, cx, cy, R) {
   return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
 }
 
-function arcSegments(points, cx, cy, R, color, opacity, thickness) {
-  const segs = [];
-  for (let i = 1; i < points.length; i += 1) {
-    const a = points[i - 1];
-    const b = points[i];
-    if (!a || !b) continue;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (!len || len > R * 0.6) continue; // skip horizon jumps across the north passage
-    segs.push({
-      x: (a.x + b.x) / 2,
-      y: (a.y + b.y) / 2,
-      len,
-      angle: Math.atan2(b.y - a.y, b.x - a.x),
-      color,
-      opacity,
-      thickness,
-    });
+// Turn a point list (with nulls marking gaps) into one SVG path string per continuous run.
+function arcPaths(points, R) {
+  const out = [];
+  let cur = null;
+  for (let i = 0; i < points.length; i += 1) {
+    const p = points[i];
+    if (!p) {
+      if (cur) {
+        out.push(cur);
+        cur = null;
+      }
+      continue;
+    }
+    if (cur) {
+      const prev = points[i - 1];
+      const jump = prev ? Math.hypot(p.x - prev.x, p.y - prev.y) : 0;
+      if (jump > R * 0.6) {
+        out.push(cur);
+        cur = 'M ' + p.x.toFixed(2) + ' ' + p.y.toFixed(2);
+      } else {
+        cur += ' L ' + p.x.toFixed(2) + ' ' + p.y.toFixed(2);
+      }
+    } else {
+      cur = 'M ' + p.x.toFixed(2) + ' ' + p.y.toFixed(2);
+    }
   }
-  return segs;
+  if (cur) out.push(cur);
+  return out;
 }
 
 export default function SunPathChart({
@@ -71,30 +84,28 @@ export default function SunPathChart({
     () =>
       seasonalArcs.map((arc) => {
         const pts = [];
-        for (let m = 0; m <= 1440; m += 30) {
+        for (let m = 0; m <= 1440; m += 20) {
           const t = arc.dayStartMs + m * 60000;
           const p = solarPosition(t, arc.lat, arc.lng);
-          if (p.altitude < 0) {
+          if (p.altitude < 0.5) {
             pts.push(null);
             continue;
           }
           pts.push({ t, ...p, ...project(p.azimuth, p.altitude, cx, cy, R) });
         }
-        return { label: arc.label, segs: arcSegments(pts, cx, cy, R, colors.sky, 0.22, 1) };
+        let peak = null;
+        for (const p of pts) {
+          if (!p) continue;
+          if (!peak || p.altitude > peak.altitude) peak = p;
+        }
+        return { label: arc.label, peak, paths: arcPaths(pts, R) };
       }),
     [seasonalArcs, cx, cy, R]
   );
 
-  const todaySegs = useMemo(() => arcSegments(today, cx, cy, R, accent, 0.95, compact ? 2 : 2.4), [today, cx, cy, R, accent, compact]);
+  const todayPaths = useMemo(() => arcPaths(today, R), [today, R]);
 
-  const markers = useMemo(() => {
-    const out = [];
-    for (const p of today) {
-      if (!p) continue;
-      out.push(p);
-    }
-    return out;
-  }, [today]);
+  const markers = useMemo(() => today.filter(Boolean), [today]);
 
   const nowPoint = useMemo(() => {
     if (!Number.isFinite(nowMs) || nowMs < dayStartMs || nowMs > dayStartMs + DAY) return null;
@@ -148,58 +159,51 @@ export default function SunPathChart({
             key={'spoke' + deg}
             style={{
               position: 'absolute',
-              left: cx + (half * Math.sin(rad)) / 1 - half,
-              top: cy - (half * Math.cos(rad)) / 1,
+              left: cx + half * Math.sin(rad) - half,
+              top: cy - half * Math.cos(rad),
               width: half * 2,
               height: 1,
               backgroundColor: colors.line,
-              transform: [{ rotate: (deg - 90) + 'deg' }],
+              transform: [{ rotate: deg - 90 + 'deg' }],
               opacity: 0.5,
             }}
           />
         );
       })}
 
-      {seasonal.map((arc, i) =>
-        arc.segs.map((s, j) => (
-          <View
-            key={'sea' + i + '-' + j}
-            style={{
-              position: 'absolute',
-              left: s.x - s.len / 2,
-              top: s.y,
-              width: s.len,
-              height: s.thickness,
-              backgroundColor: s.color,
-              opacity: s.opacity,
-              transform: [{ rotate: s.angle + 'rad' }],
-            }}
+      <Svg width={size} height={size} style={{ position: 'absolute', left: 0, top: 0 }}>
+        {seasonal.map((arc, i) =>
+          arc.paths.map((d, j) => (
+            <Path
+              key={'sea' + i + '-' + j}
+              d={d}
+              stroke={colors.sky}
+              strokeWidth={compact ? 1.2 : 1.6}
+              strokeOpacity={0.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ))
+        )}
+        {todayPaths.map((d, i) => (
+          <Path
+            key={'sun' + i}
+            d={d}
+            stroke={accent}
+            strokeWidth={compact ? 2 : 3}
+            strokeOpacity={1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
           />
-        ))
-      )}
-
-      {todaySegs.map((s, i) => (
-        <View
-          key={'sun' + i}
-          style={{
-            position: 'absolute',
-            left: s.x - s.len / 2,
-            top: s.y - s.thickness / 2,
-            width: s.len,
-            height: s.thickness,
-            backgroundColor: s.color,
-            opacity: s.opacity,
-            transform: [{ rotate: s.angle + 'rad' }],
-          }}
-        />
-      ))}
-
-      {first ? <View style={{ position: 'absolute', left: first.x - 4, top: first.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.sky }} /> : null}
-      {last ? <View style={{ position: 'absolute', left: last.x - 4, top: last.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.night }} /> : null}
-
-      {nowPoint && !nowPoint.below ? (
-        <View style={{ position: 'absolute', left: nowPoint.x - 6, top: nowPoint.y - 6, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.sun }} />
-      ) : null}
+        ))}
+        {first ? <Circle cx={first.x} cy={first.y} r={4} fill={colors.sky} /> : null}
+        {last ? <Circle cx={last.x} cy={last.y} r={4} fill={colors.night} /> : null}
+        {nowPoint && !nowPoint.below ? (
+          <Circle cx={nowPoint.x} cy={nowPoint.y} r={6} fill={colors.card} stroke={colors.sun} strokeWidth={2} />
+        ) : null}
+      </Svg>
 
       {showLabels ? (
         <>

@@ -32,8 +32,13 @@ import { crossingTimes, daySummary, solarPosition } from './src/engine/solar';
 import { findFirstDate } from './src/engine/solve';
 import { compassPoint, ratioAt, shadowHeading, shadowLength } from './src/engine/shadow';
 
-const SEASON_LABELS = ['Mar 21', 'Jun 21', 'Sep 21', 'Dec 21'];
-const SEASON_MONTHS = [2, 5, 8, 11];
+const SEASON_LABELS = ['Jun 21', 'Mar 21', 'Dec 21'];
+const SEASON_MONTHS = [5, 2, 11];
+const FEET_PER_M = 3.28084;
+
+function heightDisplay(metres, imperial) {
+  return imperial ? (metres * FEET_PER_M).toFixed(1) : String(metres);
+}
 
 function clockSpans(dayStart, lat, lng) {
   const at = (deg) => crossingTimes(dayStart, lat, lng, deg);
@@ -68,7 +73,7 @@ export default function App() {
   const [labelText, setLabelText] = useState(store.label);
   const [targetText, setTargetText] = useState('90');
   const [solverMode, setSolverMode] = useState('azimuth');
-  const [heightText, setHeightText] = useState(String(store.objectHeightM));
+  const [heightText, setHeightText] = useState(() => heightDisplay(store.objectHeightM, store.units === 'imperial'));
   const [azText, setAzText] = useState(String(store.azOffset));
   const [altText, setAltText] = useState(String(store.altOffset));
   const [solution, setSolution] = useState(null);
@@ -263,8 +268,8 @@ export default function App() {
       <View style={styles.legend}>
         <View style={[styles.legendDot, { backgroundColor: colors.sun }]} />
         <Text style={type.small}>This day</Text>
-        <View style={[styles.legendDot, { backgroundColor: colors.sky, opacity: 0.45 }]} />
-        <Text style={type.small}>Equinox / solstice</Text>
+        <View style={[styles.legendDot, { backgroundColor: colors.sky, opacity: 0.6 }]} />
+        <Text style={type.small}>Jun / Dec 21</Text>
         <View style={[styles.legendDot, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.sun }]} />
         <Text style={type.small}>Now</Text>
       </View>
@@ -307,18 +312,20 @@ export default function App() {
           onChangeText={(v) => {
             setHeightText(v);
             const n = Number.parseFloat(String(v).replace(',', '.'));
-            if (Number.isFinite(n) && n > 0) update({ objectHeightM: n });
+            if (Number.isFinite(n) && n > 0) {
+              update({ objectHeightM: store.units === 'imperial' ? n / FEET_PER_M : n });
+            }
           }}
           onBlur={() => {
             const n = Number.parseFloat(String(heightText).replace(',', '.'));
-            const safe = Number.isFinite(n) && n > 0 ? n : store.objectHeightM;
-            setHeightText(String(safe));
-            update({ objectHeightM: safe });
+            const metres = Number.isFinite(n) && n > 0 ? (store.units === 'imperial' ? n / FEET_PER_M : n) : store.objectHeightM;
+            setHeightText(heightDisplay(metres, store.units === 'imperial'));
+            update({ objectHeightM: metres });
           }}
           keyboardType="decimal-pad"
           style={styles.heightInput}
         />
-        <Text style={type.small}>metres</Text>
+        <Text style={type.small}>{store.units === 'imperial' ? 'feet' : 'metres'}</Text>
       </View>
       {shadowRows.map((row) => (
         <View key={row.h} style={styles.tableRow}>
@@ -484,7 +491,14 @@ export default function App() {
                 <Text style={styles.settingLabel}>{label}</Text>
                 <Switch
                   value={key ? !!store[key] : store.units === 'imperial'}
-                  onValueChange={(v) => (key ? update({ [key]: v }) : update({ units: v ? 'imperial' : 'metric' }))}
+                  onValueChange={(v) => {
+                    if (key) {
+                      update({ [key]: v });
+                    } else {
+                      update({ units: v ? 'imperial' : 'metric' });
+                      setHeightText(heightDisplay(store.objectHeightM, v));
+                    }
+                  }}
                   trackColor={{ true: colors.sun }}
                 />
               </View>
