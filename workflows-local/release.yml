@@ -77,9 +77,10 @@ jobs:
         run: |
           set -x
           ls ios
-          ls ios/AppIntents
-          grep -c "AppShortcutsProvider" ios/AppIntents/*.swift
-          grep -n "Solshot" ios/*/Info.plist | head -5
+          find ios -name "*.swift" -path "*AppIntents*" -print
+          grep -rl "AppShortcutsProvider" ios --include="*.swift"
+          grep -n "com.lixing.solshot" ios/*/Info.plist | head -5
+          grep -n "solshot-deployment-floor" ios/Podfile
 
       - name: Archive
         env:
