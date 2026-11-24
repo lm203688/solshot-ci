@@ -45,6 +45,7 @@
     "plugins": [
       "./plugins/withUIScene.cjs",
       "./plugins/withAppIntents.cjs",
+      "./plugins/withDeploymentTarget.cjs",
       "expo-file-system"
     ],
     "owner": "lm203688"
