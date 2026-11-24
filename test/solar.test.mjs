@@ -20,9 +20,11 @@ const copy = path.join(tmp, 'solar.mjs');
 fs.copyFileSync(path.join(root, 'src/engine/solar.js'), copy);
 const solar = await import('file://' + copy);
 
-const fixture = JSON.parse(
-  fs.readFileSync(path.resolve(root, '..', '数据', 'astral-fixture.json'), 'utf8')
-);
+const fixturePath = [
+  path.join(root, 'test', 'fixtures', 'astral-fixture.json'),
+  path.resolve(root, '..', '数据', 'astral-fixture.json'),
+].find((p) => fs.existsSync(p));
+const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 
 const MINUTE = 60000;
 const minutesBetween = (a, b) => Math.abs(a - b) / MINUTE;

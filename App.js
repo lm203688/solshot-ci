@@ -201,22 +201,24 @@ export default function App() {
       ) : summary.polar === 'alwaysBelow' ? (
         <Text style={[type.h2, { marginTop: 8 }]}>Polar night — the sun stays below the horizon</Text>
       ) : (
-        <View>
-          <View style={[styles.twoUp, { marginTop: 8 }]}>
+        <View style={{ marginTop: 4 }}>
+          <View style={styles.sunRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.timeLabel}>Sunrise</Text>
-              <Text style={type.hero}>{summary.sunrise ? fmtTime(summary.sunrise, tz, store.dst, store.use24) : '—'}</Text>
               <Text style={type.small}>
                 {summary.sunriseAzimuth != null ? fmtAngle(summary.sunriseAzimuth + store.azOffset, store.dms) + ' ' + compassPoint(summary.sunriseAzimuth + store.azOffset) : '—'}
               </Text>
             </View>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={styles.sunTime}>{summary.sunrise ? fmtTime(summary.sunrise, tz, store.dst, store.use24) : '—'}</Text>
+          </View>
+          <View style={[styles.sunRow, { borderTopWidth: 1, borderTopColor: colors.line, borderBottomWidth: 1, borderBottomColor: colors.line }]}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.timeLabel}>Sunset</Text>
-              <Text style={type.hero}>{summary.sunset ? fmtTime(summary.sunset, tz, store.dst, store.use24) : '—'}</Text>
               <Text style={type.small}>
                 {summary.sunsetAzimuth != null ? fmtAngle(summary.sunsetAzimuth + store.azOffset, store.dms) + ' ' + compassPoint(summary.sunsetAzimuth + store.azOffset) : '—'}
               </Text>
             </View>
+            <Text style={styles.sunTime}>{summary.sunset ? fmtTime(summary.sunset, tz, store.dst, store.use24) : '—'}</Text>
           </View>
           <View style={styles.nextBox}>
             <View>
@@ -232,7 +234,9 @@ export default function App() {
       )}
       {isToday ? (
         <Text style={[type.small, { marginTop: 10 }]}>
-          Now: sun {fmtElevation(displayAlt)} at {fmtAngle(displayAz, store.dms)} ({compassPoint(displayAz)})
+          {displayAlt < -0.833
+            ? 'Sun is below the horizon' + (summary.sunrise ? ' · next sunrise ' + fmtTime(summary.sunrise, tz, store.dst, store.use24) : '')
+            : 'Sun ' + fmtElevation(displayAlt) + ' at ' + fmtAngle(displayAz, store.dms) + ' (' + compassPoint(displayAz) + ')'}
         </Text>
       ) : null}
     </View>
@@ -543,6 +547,8 @@ const styles = {
   navGlyph: { fontSize: 20, fontWeight: '700', color: colors.ink },
   navLabel: { fontSize: 13, fontWeight: '700', color: colors.ink },
   twoUp: { flexDirection: 'row', alignItems: 'flex-start' },
+  sunRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  sunTime: { fontSize: 26, fontWeight: '800', color: colors.ink, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   timeLabel: { fontSize: 12, fontWeight: '700', color: colors.sub, letterSpacing: 0.4 },
   nextBox: { marginTop: 14, backgroundColor: colors.sunSoft, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   nextType: { fontSize: 11, fontWeight: '800', color: colors.sun, letterSpacing: 0.6 },

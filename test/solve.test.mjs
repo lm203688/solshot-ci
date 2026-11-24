@@ -29,7 +29,11 @@ const solar = await import('file://' + path.join(tmp, 'solar.js'));
 const solve = await import(stage('solve'));
 const shadow = await import(stage('shadow'));
 
-const fixture = JSON.parse(fs.readFileSync(path.resolve(root, '..', '数据', 'astral-fixture.json'), 'utf8'));
+const fixturePath = [
+  path.join(root, 'test', 'fixtures', 'astral-fixture.json'),
+  path.resolve(root, '..', '数据', 'astral-fixture.json'),
+].find((p) => fs.existsSync(p));
+const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 const bostonRow = fixture.rows.find((r) => r.city === 'Boston' && r.date === '2026-04-15');
 
 test('due-east sun appears within a few days of the spring equinox', () => {
