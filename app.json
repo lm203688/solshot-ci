@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Solshot",
+    "slug": "solshot",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "description": "Offline sun path, golden hour and shadow planner: solar position, twilight times, reverse date search and calibrated bearings. One purchase, no account, no ads, no subscription.",
+    "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.lixing.solshot",
+      "icon": "./assets/icon.png",
+      "supportsTablet": true,
+      "deploymentTarget": "16.4",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["0A2A.1", "3B52.1", "C617.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": ["E174.1", "85F4.1"]
+          }
+        ]
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIRequiredDeviceCapabilities": ["arm64"]
+      }
+    },
+    "plugins": [
+      "./plugins/withUIScene.cjs",
+      "./plugins/withAppIntents.cjs",
+      "expo-file-system"
+    ],
+    "owner": "lm203688"
+  }
+}

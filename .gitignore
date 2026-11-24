@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+ios/
+android/
+dist/
+web-build/
+*.ipa
+*.xcarchive/
+.idea/
+.DS_Store
+.env
