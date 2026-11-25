@@ -193,3 +193,65 @@ struct SolshotShortcuts: AppShortcutsProvider {
     )
   }
 }
+
+
+// MARK: - Solar event entity (Spotlight + Siri parameter)
+
+// 太阳事件的边界是固定仰角，跟地点无关；地点相关的时刻仍然走 SunTimesIntent。
+@available(iOS 16.0, *)
+struct SolarEventEntity: AppEntity {
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = TypeDisplayRepresentation(name: "Sun event")
+  static var defaultQuery = SolarEventQuery()
+
+  let id: String
+  let summary: String
+  let definition: String
+  /// Centre-of-disc elevation that marks the event, in degrees.
+  let elevationDegrees: Double
+
+  var displayRepresentation: DisplayRepresentation {
+    DisplayRepresentation(title: "\(summary)", subtitle: "\(elevationDegrees)°")
+  }
+
+  static let all: [SolarEventEntity] = [
+    SolarEventEntity(id: "sunrise", summary: "Sunrise", definition: "Upper limb touches the horizon, morning", elevationDegrees: -0.833),
+    SolarEventEntity(id: "sunset", summary: "Sunset", definition: "Upper limb touches the horizon, evening", elevationDegrees: -0.833),
+    SolarEventEntity(id: "golden-morning", summary: "Golden hour (morning)", definition: "Sun between the horizon and 6° up, warm and low-contrast", elevationDegrees: 6),
+    SolarEventEntity(id: "golden-evening", summary: "Golden hour (evening)", definition: "Sun between 6° and the horizon, warm and low-contrast", elevationDegrees: 6),
+    SolarEventEntity(id: "civil-dusk", summary: "Civil dusk", definition: "Sun 6° below the horizon; outdoor detail fades", elevationDegrees: -6),
+    SolarEventEntity(id: "blue-hour", summary: "Blue hour", definition: "Sun between 6° and 4° below the horizon", elevationDegrees: -4),
+  ]
+}
+
+@available(iOS 18.0, *)
+extension SolarEventEntity: IndexedEntity {}
+
+@available(iOS 16.0, *)
+struct SolarEventQuery: EntityQuery {
+  func entities(for identifiers: [String]) async throws -> [SolarEventEntity] {
+    SolarEventEntity.all.filter { identifiers.contains($0.id) }
+  }
+
+  func suggestedEntities() async throws -> [SolarEventEntity] {
+    SolarEventEntity.all
+  }
+
+  func defaultResult() async -> SolarEventEntity? {
+    SolarEventEntity.all.first
+  }
+}
+
+@available(iOS 16.0, *)
+struct SolarEventMeaningIntent: AppIntent {
+  static var title: LocalizedStringResource = "What a sun event means"
+  static var description = IntentDescription("Definition and elevation of a solar event, independent of where you are.")
+
+  @Parameter(title: "Sun event")
+  var event: SolarEventEntity
+
+  func perform() async throws -> some IntentResult & ProvidesDialog {
+    let elevation = event.elevationDegrees
+    let text = "\(event.summary): \(event.definition). The sun sits at \(String(format: "%.2f", elevation))° at this boundary."
+    return .result(dialog: IntentDialog(stringLiteral: text))
+  }
+}
