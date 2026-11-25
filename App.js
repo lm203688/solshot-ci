@@ -15,6 +15,7 @@ import { layoutForSize } from './src/duoLayout';
 import SunPathChart from './src/SunPathChart';
 import { colors, radius, shadow, type } from './src/theme';
 import { loadStore, PRESETS, saveStore } from './src/store';
+import { aiAvailability, askAi } from './src/appleAi';
 import {
   DAY,
   HOUR,
@@ -78,6 +79,9 @@ export default function App() {
   const [altText, setAltText] = useState(String(store.altOffset));
   const [solution, setSolution] = useState(null);
   const [tick, setTick] = useState(0);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState(null);
+  const aiStatus = useMemo(() => aiAvailability(), []);
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 30000);
@@ -173,6 +177,29 @@ export default function App() {
     ].filter(Boolean);
     Share.share({ message: lines.join('\n') }).catch(() => {});
   };
+  // On-device summary of today's light. The model gets the numbers already on screen
+  // and is told not to invent any: it only words them for a person standing outside.
+  const askAboutLight = useCallback(async () => {
+    if (aiBusy) return;
+    setAiBusy(true);
+    setAiAnswer(null);
+    const facts = [
+      'Place: ' + store.label,
+      'Date: ' + fmtDay(dayStart + DAY / 2, tz, store.dst),
+      'Sunrise: ' + (summary.sunrise ? fmtTime(summary.sunrise, tz, store.dst, store.use24) + ' at ' + Math.round(summary.sunriseAzimuth + store.azOffset) + '°' : 'none'),
+      'Sunset: ' + (summary.sunset ? fmtTime(summary.sunset, tz, store.dst, store.use24) + ' at ' + Math.round(summary.sunsetAzimuth + store.azOffset) + '°' : 'none'),
+      'Golden hour AM: ' + spanText(spans.goldenMorning, tz, store.dst, store.use24),
+      'Golden hour PM: ' + spanText(spans.goldenEvening, tz, store.dst, store.use24),
+      'Daylight: ' + fmtDuration(summary.dayLengthMs),
+      'Object height: ' + heightDisplay(store.objectHeightM, store.units === 'imperial') + (store.units === 'imperial' ? ' ft' : ' m'),
+    ].join('. ');
+    const reply = await askAi(
+      'Field facts: ' + facts + '. Write three short sentences telling a photographer what this means for shooting here today.',
+      'You are the field assistant inside a sun-path app. Use only the numbers given, never invent a time or an angle, keep it under 60 words, and add no safety or legal claims.'
+    );
+    setAiAnswer(reply || 'No answer from the on-device model right now. Apple Intelligence may be off, still downloading, or this device may not support it.');
+    setAiBusy(false);
+  }, [aiBusy, summary, spans, store, tz, dayStart]);
 
   const locationCard = (
     <View style={[styles.card, shadow]}>
@@ -539,6 +566,20 @@ export default function App() {
               />
               <Text style={type.h2}>° altitude</Text>
             </View>
+            <Text style={[type.label, { marginTop: 16 }]}>Apple Intelligence</Text>
+            <Text style={[type.small, { marginBottom: 4 }]}>
+              {aiStatus.available
+                ? 'On-device model ready. Wording happens on this phone; nothing is uploaded.'
+                : 'Not available — ' + aiStatus.reason + '.'}
+            </Text>
+            <Pressable
+              onPress={askAboutLight}
+              disabled={aiBusy}
+              style={[styles.primaryBtnFull, aiBusy && { opacity: 0.55 }]}
+            >
+              <Text style={styles.primaryBtnText}>{aiBusy ? 'Asking the on-device model…' : 'Explain today’s light'}</Text>
+            </Pressable>
+            {aiAnswer ? <Text style={[type.body, { marginTop: 10 }]}>{aiAnswer}</Text> : null}
             <Text style={[type.small, { marginTop: 14 }]}>Version 1.0 · no account, no tracking, no network.</Text>
             </ScrollView>
           </View>
