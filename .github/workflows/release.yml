@@ -157,7 +157,7 @@ jobs:
           echo "== app intents gate =="
           test -d "$APP/Metadata.appintents" || { echo "FAIL: no App Intents metadata in signed ipa"; exit 1; }
           ls -l "$APP/Metadata.appintents" || true
-          for I in SunTimesIntent OpenSolshotIntent; do
+          for I in SunTimesIntent OpenSolshotIntent SolarEventMeaningIntent; do
             grep -raq "$I" "$APP/Metadata.appintents" || { echo "FAIL: intent $I not compiled into metadata"; exit 1; }
           done
           strings -a "$APP/Metadata.appintents"/* | grep -o "[A-Za-z]*Intent" | sort -u | head -25 || true
